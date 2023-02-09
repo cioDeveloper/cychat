@@ -21,7 +21,9 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +52,14 @@ import com.cioinfotech.cychat.features.settings.VectorPreferences
 import com.cioinfotech.lib.multipicker.utils.FilePathHelper
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
+import id.zelory.compressor.Compressor
+import id.zelory.compressor.constraint.format
+import id.zelory.compressor.constraint.quality
+import id.zelory.compressor.constraint.resolution
+import id.zelory.compressor.constraint.size
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -79,6 +89,7 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
     private lateinit var attachmentsHelper: AttachmentsHelper
     private lateinit var attachmentTypeSelector: AttachmentTypeSelectorView
     private lateinit var keyboardStateUtils: KeyboardStateUtils
+    private  var  compraseImageFile:File? = null
     private lateinit var pref: SharedPreferences
     private var totalCountOfAttachments = 0
     private var sentCountOfAttachments = 0
@@ -96,6 +107,9 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
         attachmentsHelper = AttachmentsHelper(requireContext(), this).register()
         keyboardStateUtils = KeyboardStateUtils(requireActivity())
         cyCoreViewModel = (requireActivity() as NoticeBoardActivity).cyCoreViewModel
+        views.tvAttachPhoto.isClickable = false
+        views.tvAttachDocument.isClickable = false
+        views.tvAttachEvent.isClickable =false
         showLoading(null)
         cyCoreViewModel.selectedNotice.observe(viewLifecycleOwner) {
             it.let { notice ->
@@ -106,7 +120,10 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
         cyCoreViewModel.getNoticeBoards()
         cyCoreViewModel.noticeBoardsLiveData.observe(viewLifecycleOwner) {
             listOfBoards = it.data.boards
+            dismissLoadingDialog()
             if (listOfBoards.isEmpty()) {
+                views.txtNoNoticeBoard.isVisible =true
+                views.mainLayout.isVisible = false
                 Snackbar.make(requireView(), getString(R.string.no_notice_boards_found), BaseTransientBottomBar.LENGTH_LONG).show()
                 views.btnNotice.isEnabled = false
                 views.etTitle.isEnabled = false
@@ -117,9 +134,12 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
                 views.tvAttachEvent.isClickable = false
                 views.tvAttachDocument.isClickable = false
                 views.spinner.error = getString(R.string.no_notice_boards_found)
+            }else {
+
+                views.mainLayout.isVisible = true
+                views.txtNoNoticeBoard.isVisible =false
+                setUpdateMode()
             }
-            dismissLoadingDialog()
-            setUpdateMode()
         }
 
         views.spinner.setOnClickListener {
@@ -132,6 +152,10 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
                         }
                     views.btnNotice.isEnabled = true
                     views.spinner.setText(selectedBoard?.bb_name)
+                    views.tvAttachPhoto.isClickable = true
+                    views.tvAttachEvent.isClickable =true
+                    views.tvAttachDocument.isClickable = true
+
                 }
             },
                     listOfBoards.map { org -> org.bb_name }.toMutableList(),
@@ -152,10 +176,17 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
             totalCountOfAttachments += (if (selectedImages != null) 1 else 0)
             totalCountOfAttachments += (if (selectedAttachments != null) 1 else 0)
 //            for (media in selectedImages)
-            selectedImages?.let { it1 -> createUploadMediaBody(it1, NetworkConstants.MEDIA_IMAGE, it.data.postID.toString()) }?.let { it2 -> cyCoreViewModel.uploadMedia(it2) }
+            compraseImageFile?.let { it1 -> createUploadMediaBody(it1, NetworkConstants.MEDIA_IMAGE, it.data.postID.toString()) }?.let {
+
+                it2 -> cyCoreViewModel.uploadMedia(it2
+            ) }
 
 //            for (media in selectedAttachments)
-            selectedAttachments?.let { it1 -> createUploadMediaBody(it1, MEDIA_ATTACHMENT, it.data.postID.toString()) }?.let { it2 -> cyCoreViewModel.uploadMedia(it2) }
+            selectedAttachments?.let { it1 ->
+                FilePathHelper.getRealPath(context, selectedAttachments?.queryUri)?.let { fileUri ->
+                    compraseImageFile = File(fileUri.path!!)
+                }
+                createUploadMediaBody(compraseImageFile!!, MEDIA_ATTACHMENT, it.data.postID.toString()) }?.let { it2 -> cyCoreViewModel.uploadMedia(it2) }
 
             if (totalCountOfAttachments == 0) {
                 dismissLoadingDialog()
@@ -178,24 +209,34 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
         }
 
         views.btnNotice.setOnClickListener {
-            if (listOfBoards.isEmpty())
-                Snackbar.make(requireView(), getString(R.string.no_notice_boards_found), BaseTransientBottomBar.LENGTH_SHORT).show()
-            else {
+            if (views.etTitle.text.trim().isEmpty()) {
+                views.etTitle.error = "please add title"
+               //  views.etTitle.error = "please add title"
+                Snackbar.make(requireView(), getString(R.string.add_require_detail_for_noticeBoard), BaseTransientBottomBar.LENGTH_SHORT).show()
+            }else if (views.spinner.text.trim().isEmpty()) {
+                // views.spinner.error = getString(R.string.no_notice_boards_found)
+                views.spinner.error = getString(R.string.no_notice_boards_found)
+                Snackbar.make(requireView(), getString(R.string.add_require_detail_for_noticeBoard), BaseTransientBottomBar.LENGTH_SHORT).show()
+            }else {
                 showLoading(null)
                 cyCoreViewModel.updatePostDetails(createRequestBody())
             }
         }
 
         views.tvAttachPhoto.setOnClickListener {
-            isAttachmentsClicked = false
-            if (!::attachmentTypeSelector.isInitialized)
-                attachmentTypeSelector = AttachmentTypeSelectorView(vectorBaseActivity, vectorBaseActivity.layoutInflater, this@CreateNoticeFragment, true)
-            attachmentTypeSelector.show(views.tvAttachPhoto, keyboardStateUtils.isKeyboardShowing)
+            if(views.spinner.text.isNotEmpty()) {
+                isAttachmentsClicked = false
+                if (!::attachmentTypeSelector.isInitialized)
+                    attachmentTypeSelector = AttachmentTypeSelectorView(vectorBaseActivity, vectorBaseActivity.layoutInflater, this@CreateNoticeFragment, true)
+                attachmentTypeSelector.show(views.tvAttachPhoto, keyboardStateUtils.isKeyboardShowing)
+            }
         }
 
         views.tvAttachDocument.setOnClickListener {
-            isAttachmentsClicked = true
-            onTypeSelected(AttachmentTypeSelectorView.Type.FILE)
+            if (views.spinner.text.isNotEmpty()) {
+                isAttachmentsClicked = true
+                onTypeSelected(AttachmentTypeSelectorView.Type.FILE)
+            }
         }
 
         views.ivRemove.setOnClickListener {
@@ -211,8 +252,11 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
             views.ivRemoveAttachment.isVisible = false
         }
 
+
         views.tvAttachEvent.setOnClickListener {
-            addFragmentToBackstack(R.id.container, CreateEventFragment::class.java)
+            if(views.spinner.text.trim().isNotEmpty() && views.etTitle.text.trim().isNotEmpty()) {
+                addFragmentToBackstack(R.id.container, CreateEventFragment::class.java)
+            }
         }
 
         views.etEndDateAndTime.setOnClickListener {
@@ -267,17 +311,14 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
         mTimePicker.show()
     }
 
-    private fun createUploadMediaBody(selectedAttachment: ContentAttachmentData, type: String, postId: String): MutableMap<String, RequestBody> {
+    private fun createUploadMediaBody(imgFile: File, type: String, postId: String): MutableMap<String, RequestBody> {
         val partList = mutableMapOf<String, RequestBody>()
         partList[NetworkConstants.CLIENT_NAME] = NetworkConstants.CY_VERSE_ANDROID.toRequestBody("text/plain".toMediaTypeOrNull())
         partList[NetworkConstants.OP] = NetworkConstants.UPLOAD_MEDIA.toRequestBody("text/plain".toMediaTypeOrNull())
         partList[NetworkConstants.SERVICE_NAME] = NetworkConstants.EDIT_POSTS.toRequestBody("text/plain".toMediaTypeOrNull())
         partList[NetworkConstants.POST_ID] = postId.toRequestBody("text/plain".toMediaTypeOrNull())
-        FilePathHelper.getRealPath(context, selectedAttachment.queryUri)?.let { fileUri ->
-            val imgFile = File(fileUri.path!!)
-            val format = if (type == MEDIA_ATTACHMENT) "application/*" else "image/*"
-            partList["media\"; filename=\"${selectedAttachment.name}"] = imgFile.asRequestBody(format.toMediaTypeOrNull())
-        }
+        val format = if (type == MEDIA_ATTACHMENT) "attachment/*" else "image/*"
+        partList["media\"; filename=\"${imgFile.name}"] = imgFile.asRequestBody(format.toMediaTypeOrNull())
         partList[NetworkConstants.TYPE] = type.toRequestBody("text/plain".toMediaTypeOrNull())
         return partList
     }
@@ -342,19 +383,31 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
         if (attachments.isNotEmpty()) {
             if (isAttachmentsClicked) {
                 selectedAttachments = attachments[0]//.toMutableList()
-                views.tvPreviewAttachment.isVisible = true
-                views.ivRemoveAttachment.isVisible = true
-                views.tvPreviewAttachment.text = "Document Attached"
+                if( selectedAttachments?.size!!>=2097152){
+                    Snackbar.make(requireView(), "Document size should be less then 2 MB", BaseTransientBottomBar.LENGTH_SHORT).show()
+                }else {
+                    views.tvPreviewAttachment.isVisible = true
+                    views.ivRemoveAttachment.isVisible = true
+                    views.tvPreviewAttachment.text = "Document Attached"
+                }
             } else {
                 selectedImages = attachments[0]//.toMutableList()
-                selectedImages?.queryUri.let {
-                    Glide.with(requireContext())
-                            .asBitmap()
-                            .load(it)
-                            .into(views.ivPreview)
-                    views.ivPreview.isVisible = true
-                    views.ivRemove.isVisible = true
+
+
+                runBlocking {
+                    withContext(Dispatchers.IO) {
+                        compresedFile()
+                    }
                 }
+
+                 selectedImages?.queryUri.let {
+                     Glide.with(requireContext())
+                             .asBitmap()
+                             .load(it)
+                             .into(views.ivPreview)
+                     views.ivPreview.isVisible = true
+                     views.ivRemove.isVisible = true
+             }
             }
         }
 //        Toast.makeText(requireContext(), "Attachments Ready" + attachments.size, Toast.LENGTH_SHORT).show()
@@ -438,5 +491,24 @@ class CreateNoticeFragment : VectorBaseFragment<FragmentCreateNoticeBinding>(), 
             launchAttachmentProcess(type)
         else
             attachmentsHelper.pendingType = type
+    }
+
+    suspend fun compresedFile() {
+            FilePathHelper.getRealPath(context, selectedImages?.queryUri)?.let { fileUri ->
+                compraseImageFile = File(fileUri.path!!)
+            }
+        if(compraseImageFile!=null){
+        if (compraseImageFile!!.length() >= 2097152 && compraseImageFile!!.length() <= 6291456) {
+
+            compraseImageFile = Compressor.compress(requireContext(), compraseImageFile!!) {
+                resolution(1280, 720)
+                quality(80)
+                format(Bitmap.CompressFormat.JPEG)
+                size(2_097_152) // 2 MB
+            }
+        }else if(compraseImageFile!!.length() >= 6291456){
+            Snackbar.make(requireView(), "Image size should be less then 2 MB", BaseTransientBottomBar.LENGTH_SHORT).show()
+        }
+            }
     }
 }

@@ -358,6 +358,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <string name="add_new_role">Add User Role</string>
     <string name="leave">Leave</string>
     <string name="stay">Stay</string>
     <string name="send">Send</string>
@@ -568,7 +569,7 @@
 
     <string name="option_send_files">Send files</string>
     <string name="option_send_sticker">Send sticker</string>
-    <string name="option_take_photo_video">Take photo or video</string>
+    <string name="option_take_photo_video">Take photo</string>
     <string name="option_take_photo">Take photo</string>
     <string name="option_take_video">Take video</string>
 
@@ -1924,6 +1925,8 @@
 
 
     <string name="keys_backup_setup_skip_title">Are you sure?</string>
+    <string name="txt_notice_board">You have not subscribed to any Notice board</string>
+
     <string name="keys_backup_setup_skip_msg">You may lose access to your messages if you log out or lose this device.</string>
 
     <string name="keys_backup_restore_is_getting_backup_version">Fetching backup version…</string>
@@ -3375,6 +3378,7 @@
     <string name="my_profile">My Profile</string>
     <string name="visibility">Visibility</string>
     <string name="roles">Roles:</string>
+    <string name="existing_role">Existing Role:</string>
     <string name="pending_requests">Pending Request: %s</string>
     <string name="request_for_new_role">Request for new Role</string>
     <string name="enter_otp">Enter OTP</string>
@@ -3392,7 +3396,8 @@
     <string name="individual_user_selection_hint">Register as individual user on this App</string>
     <string name="organization_user">Organization User</string>
     <string name="organization_user_selection_hint">Register as a user of the Participating Organization.\nClick this option only if your organization has purchased this App for Corporate use and have instructed you to register as user from your organization.</string>
-    <string name="now_you_can_add_roles_from_settings_profile">Now, you can add new role using Settings -> General -> Profile -> Add Role</string>
+    <string name="now_you_can_add_roles_from_settings_profile"> Now , you can add using Add user role, also you can add role later from Settings -> General -> Profile -> Add Role for new role
+        </string>
     <string name="you_are_signing_for">You are doing sign-in or sign-up for %s</string>
     <string name="select_organization">Select the type of your organization</string>
     <string name="search_organization">Search Organization Type</string>
@@ -3400,6 +3405,8 @@
     <string name="select_new_role">Select the name of your organization</string>
     <string name="search_your_organization">Search Your Organization</string>
     <string name="organization_type">Organization Type</string>
+    <string name="request_new_role">Request new role</string>
+    <string name="add_role_heading">Select the Role that you want to add</string>
     <string name="your_organization">Your Organization</string>
     <string name="selected_new_role">Selected New Role: %s</string>
     <string name="bottom_notice_board">Notice Board</string>
@@ -3426,14 +3433,14 @@
     <string name="select_end_date_and_time">Select End Date And Time</string>
     <string name="enter_link">Enter Event Link</string>
     <string name="select_event_type">Select Event Type</string>
-    <string name="online_event">Online Event</string>
-    <string name="live_event">Live Event</string>
+    <string name="online_event">Online</string>
+    <string name="live_event">In person</string>
     <string name="enter_address">Enter Address</string>
     <string name="enter_venue">Enter Venue</string>
     <string name="asia_kolkata">Asia/Kolkata</string>
     <string name="select_timezone">Select Timezone</string>
     <string name="add_to_calendar">Add to calendar</string>
-    <string name="plugins">Plugins</string>
+    <string name="plugins">Services</string>
     <string name="not_now">Not Now</string>
     <string name="next">Next</string>
     <string name="initials">Initials</string>
@@ -3453,5 +3460,7 @@
     <string name="upload">Upload</string>
     <string name="document_attached">Document Attached</string>
     <string name="select_document">Select Document</string>
+    <string name="no_notice_board">No board is assigned to create a Notice</string>
+    <string name="add_require_detail_for_noticeBoard">Please add require details for create notice board</string>
 
 </resources>
